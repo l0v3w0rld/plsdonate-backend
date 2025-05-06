@@ -7,6 +7,21 @@ const PORT = 3000;
 
 const ROBLOX_COOKIE = process.env.ROBLOX_COOKIE;
 
+// Fetch the userId from a username
+async function getUserIdFromUsername(username) {
+    try {
+        const response = await axios.get(`https://users.roblox.com/v1/users/search?keyword=${username}`);
+        if (response.data.data && response.data.data.length > 0) {
+            return response.data.data[0].id; // Return the userId for the username
+        } else {
+            throw new Error('User not found');
+        }
+    } catch (error) {
+        console.error('Error fetching userId from username:', error.message);
+        return null;
+    }
+}
+
 // Fetch all games made by a user
 async function fetchUserGames(userId) {
     try {
@@ -44,18 +59,29 @@ async function fetchAllGamepasses(userId) {
 
 // API endpoint
 app.get('/', async (req, res) => {
-    const userId = req.query.userId;
+    const { userId, username } = req.query;
 
-    if (!userId) {
-        return res.status(400).send('Missing userId in query.');
+    let finalUserId = userId;
+
+    // If username is provided, fetch userId from username
+    if (username) {
+        console.log('Fetching userId from username:', username);
+        finalUserId = await getUserIdFromUsername(username);
+        if (!finalUserId) {
+            return res.status(400).send('Invalid username.');
+        }
     }
 
-    console.log('Fetching all gamepasses for userId:', userId);
+    if (!finalUserId) {
+        return res.status(400).send('Missing userId or username in query.');
+    }
 
-    const gamepasses = await fetchAllGamepasses(userId);
+    console.log('Fetching all gamepasses for userId:', finalUserId);
+
+    const gamepasses = await fetchAllGamepasses(finalUserId);
 
     res.json({
-        userId,
+        userId: finalUserId,
         gamepasses
     });
 });
@@ -64,3 +90,4 @@ app.get('/', async (req, res) => {
 app.listen(PORT, () => {
     console.log(`Server is running at http://localhost:${PORT}`);
 });
+
