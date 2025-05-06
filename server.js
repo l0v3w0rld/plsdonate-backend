@@ -7,15 +7,19 @@ const PORT = 3000;
 
 const ROBLOX_COOKIE = process.env.ROBLOX_COOKIE;
 
-// Fetch userId from a username (this will be similar to how it was done for the claim booth)
-async function fetchUserIdFromUsername(username) {
-  try {
-    const response = await axios.get(`https://api.roblox.com/users/get-by-username?username=${username}`);
-    return response.data.Id;
-  } catch (error) {
-    console.error(`Error fetching userId for username ${username}:`, error.message);
-    return null;
-  }
+// Fetch the userId from a username
+async function getUserIdFromUsername(username) {
+    try {
+        const response = await axios.get(`https://users.roblox.com/v1/users/search?keyword=${username}`);
+        if (response.data.data && response.data.data.length > 0) {
+            return response.data.data[0].id; // Return the userId for the username
+        } else {
+            throw new Error('User not found');
+        }
+    } catch (error) {
+        console.error('Error fetching userId from username:', error.message);
+        return null;
+    }
 }
 
 // Fetch all games made by a user
@@ -53,29 +57,29 @@ async function fetchAllGamepasses(userId) {
     return allGamepasses;
 }
 
-// API endpoint for fetching gamepasses
+// API endpoint
 app.get('/gamepasses', async (req, res) => {
-    const { userId, username } = req.query;
-    let userIdToFetch;
+    let { userId, username } = req.query;
 
-    // Check if username is provided, then fetch userId
-    if (username) {
-        userIdToFetch = await fetchUserIdFromUsername(username);
-        if (!userIdToFetch) {
-            return res.status(400).send('Invalid username or unable to fetch userId.');
-        }
-    } else if (userId) {
-        userIdToFetch = userId; // Use the provided userId directly
-    } else {
-        return res.status(400).send('Please provide either a userId or a username.');
+    if (!userId && !username) {
+        return res.status(400).send('Missing userId or username in query.');
     }
 
-    console.log('Fetching all gamepasses for userId:', userIdToFetch);
+    if (!userId && username) {
+        // If only username is provided, convert it to userId
+        console.log('Fetching userId for username:', username);
+        userId = await getUserIdFromUsername(username);
+        if (!userId) {
+            return res.status(404).send('User not found.');
+        }
+    }
 
-    const gamepasses = await fetchAllGamepasses(userIdToFetch);
+    console.log('Fetching all gamepasses for userId:', userId);
+
+    const gamepasses = await fetchAllGamepasses(userId);
 
     res.json({
-        userId: userIdToFetch,
+        userId,
         gamepasses
     });
 });
@@ -84,3 +88,4 @@ app.get('/gamepasses', async (req, res) => {
 app.listen(PORT, () => {
     console.log(`Server is running at http://localhost:${PORT}`);
 });
+
