@@ -3,9 +3,15 @@ const axios = require('axios');
 require('dotenv').config();
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 
 const ROBLOX_COOKIE = process.env.ROBLOX_COOKIE;
+
+// Middleware to parse JSON bodies
+app.use(express.json());
+
+// In-memory store for player stats: { playerName: { Raised: number, Donated: number } }
+const playerStats = {};
 
 // Fetch the userId from a username
 async function getUserIdFromUsername(username) {
@@ -57,7 +63,7 @@ async function fetchAllGamepasses(userId) {
     return allGamepasses;
 }
 
-// API endpoint
+// API endpoint: fetch gamepasses by userId or username
 app.get('/', async (req, res) => {
     const { userId, username } = req.query;
 
@@ -86,8 +92,42 @@ app.get('/', async (req, res) => {
     });
 });
 
+// New: Endpoint to get global leaderboard (sorted by Raised descending)
+app.get('/leaderboard', (req, res) => {
+    const leaderboardArray = Object.entries(playerStats).map(([Name, stats]) => ({
+        Name,
+        Raised: stats.Raised || 0,
+        Donated: stats.Donated || 0,
+    }));
+
+    leaderboardArray.sort((a, b) => b.Raised - a.Raised);
+
+    res.json(leaderboardArray);
+});
+
+// New: Endpoint to update stats for a player (POST JSON: { Name, Raised, Donated })
+app.post('/updateStats', (req, res) => {
+    const { Name, Raised, Donated } = req.body;
+
+    if (!Name || (Raised === undefined && Donated === undefined)) {
+        return res.status(400).json({ error: 'Missing Name or stats' });
+    }
+
+    if (!playerStats[Name]) {
+        playerStats[Name] = { Raised: 0, Donated: 0 };
+    }
+
+    if (typeof Raised === 'number') {
+        playerStats[Name].Raised = Raised;
+    }
+    if (typeof Donated === 'number') {
+        playerStats[Name].Donated = Donated;
+    }
+
+    res.json({ success: true, playerStats: playerStats[Name] });
+});
+
 // Start server
 app.listen(PORT, () => {
     console.log(`Server is running at http://localhost:${PORT}`);
 });
-
