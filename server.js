@@ -10,7 +10,11 @@ const ROBLOX_COOKIE = process.env.ROBLOX_COOKIE;
 // Fetch the userId from a username
 async function getUserIdFromUsername(username) {
     try {
-        const response = await axios.get(`https://users.roblox.com/v1/users/search?keyword=${username}`);
+        const response = await axios.get(`https://users.roblox.com/v1/users/search?keyword=${username}`, {
+            headers: {
+                Cookie: `.ROBLOSECURITY=${ROBLOX_COOKIE}`
+            }
+        });
         if (response.data.data && response.data.data.length > 0) {
             return response.data.data[0].id; // Return the userId for the username
         } else {
@@ -25,7 +29,11 @@ async function getUserIdFromUsername(username) {
 // Fetch all games made by a user
 async function fetchUserGames(userId) {
     try {
-        const response = await axios.get(`https://games.roblox.com/v2/users/${userId}/games?sortOrder=Asc&limit=50`);
+        const response = await axios.get(`https://games.roblox.com/v2/users/${userId}/games?sortOrder=Asc&limit=50`, {
+            headers: {
+                Cookie: `.ROBLOSECURITY=${ROBLOX_COOKIE}`
+            }
+        });
         return response.data.data; // Array of games
     } catch (error) {
         console.error('Error fetching user games:', error.message);
@@ -36,7 +44,11 @@ async function fetchUserGames(userId) {
 // Fetch all gamepasses for a game
 async function fetchGamepassesForGame(gameId) {
     try {
-        const response = await axios.get(`https://games.roblox.com/v1/games/${gameId}/game-passes?limit=50`);
+        const response = await axios.get(`https://games.roblox.com/v1/games/${gameId}/game-passes?limit=50`, {
+            headers: {
+                Cookie: `.ROBLOSECURITY=${ROBLOX_COOKIE}`
+            }
+        });
         return response.data.data; // Array of gamepasses
     } catch (error) {
         console.error(`Error fetching gamepasses for game ${gameId}:`, error.message);
@@ -90,4 +102,3 @@ app.get('/', async (req, res) => {
 app.listen(PORT, () => {
     console.log(`Server is running at http://localhost:${PORT}`);
 });
-
