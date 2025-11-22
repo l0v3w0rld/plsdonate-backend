@@ -33,11 +33,31 @@ async function fetchUserGames(userId) {
     }
 }
 
-// Fetch all gamepasses for a game
+// Fetch all gamepasses for a game (updated to new API)
 async function fetchGamepassesForGame(gameId) {
     try {
-        const response = await axios.get(`https://games.roblox.com/v1/games/${gameId}/game-passes?limit=50`);
-        return response.data.data; // Array of gamepasses
+        let allPasses = [];
+        let nextPageToken = '';
+
+        do {
+            const url = `https://apis.roblox.com/game-passes/v1/universes/${gameId}/game-passes?passView=Full&pageSize=100&pageToken=${nextPageToken}`;
+            const response = await axios.get(url);
+            const data = response.data;
+
+            if (data.gamePasses && data.gamePasses.length > 0) {
+                // Map new API response to old format
+                const mapped = data.gamePasses.map(pass => ({
+                    id: pass.id,
+                    name: pass.name,
+                    price: pass.price || 0
+                }));
+                allPasses = allPasses.concat(mapped);
+            }
+
+            nextPageToken = data.nextPageToken || '';
+        } while (nextPageToken);
+
+        return allPasses;
     } catch (error) {
         console.error(`Error fetching gamepasses for game ${gameId}:`, error.message);
         return [];
